@@ -99,5 +99,6 @@ xpack("CleanerCS2")
 
         os.vcp(targetfile, path.join(package:outputdir(), "addons", "cleanercs2", filename))
         os.vcp("package/config.cfg", path.join(package:outputdir(), "addons", "cleanercs2", "config.cfg"))
+        os.vcp("package/gamedata.json", path.join(package:outputdir(), "addons", "cleanercs2", "gamedata.json"))
         os.vcp("package/cleanercs2.vdf", path.join(package:outputdir(), "addons", "metamod", "cleanercs2.vdf"))
     end)

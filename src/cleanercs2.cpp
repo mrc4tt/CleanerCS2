@@ -83,16 +83,62 @@ KHook::Return<int> Detour_LogDirect(void* loggingSystem, int channel, int severi
 
 KHook::Function<int, void*, int, int, LeafCodeInfo_t*, char const*, va_list*> logDirectHook(Detour_LogDirect, nullptr);
 
+#ifdef WIN32
+#define GAMEDATA_PLATFORM "windows"
+#else
+#define GAMEDATA_PLATFORM "linux"
+#endif
+
+// Reads <key>.signatures.<platform> from addons/cleanercs2/gamedata.json. The file is
+// generated per game build (CS2_VibeSignatures), so a signature that moved can be
+// fixed without rebuilding the plugin. Returns an empty string when the file or the
+// entry is missing, and the caller falls back to the signature compiled in below.
+std::string LoadGamedataSignature(const char* key)
+{
+	CBufferStringGrowable<MAX_PATH> gameDir;
+	engine->GetGameDir(gameDir);
+
+	std::filesystem::path path = gameDir.Get();
+	path /= "addons/cleanercs2/gamedata.json";
+
+	std::ifstream file(path);
+	if (!file.is_open())
+		return {};
+
+	std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	size_t keyPos = text.find(std::string("\"") + key + "\"");
+	if (keyPos == std::string::npos)
+		return {};
+
+	// The first platform value after the key, i.e. the one inside its "signatures" object.
+	RE2 platformRe("\"" GAMEDATA_PLATFORM "\"\\s*:\\s*\"([^\"]*)\"");
+	std::string sig;
+	if (!RE2::PartialMatch(std::string_view(text).substr(keyPos), platformRe, &sig))
+		return {};
+
+	return sig;
+}
+
 bool SetupHook()
 {
 	CModule tier0Module(ROOTBIN, "tier0");
 
 #ifdef WIN32
-	const char* sig = "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ? 55";
+	const char* builtinSig = "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ? 55";
 #else
-	const char* sig = "55 89 D0 49 89 FA 89 F7 48 89 E5";
+	const char* builtinSig = "55 89 D0 49 89 FA 89 F7 48 89 E5";
 #endif
+	std::string gamedataSig = LoadGamedataSignature("LogDirect");
+	const char* sig = gamedataSig.empty() ? builtinSig : gamedataSig.c_str();
+
 	LogDirect_t pLogDirect = reinterpret_cast<LogDirect_t>(KHook::LookupSignature(tier0Module.m_base, tier0Module.m_size, sig));
+
+	if (!pLogDirect && !gamedataSig.empty())
+	{
+		META_CONPRINTF("[CleanerCS2] LogDirect signature from gamedata.json not found, trying the built-in one\n");
+		pLogDirect = reinterpret_cast<LogDirect_t>(KHook::LookupSignature(tier0Module.m_base, tier0Module.m_size, builtinSig));
+	}
 
 	if (!pLogDirect)
 	{
@@ -249,7 +295,7 @@ const char *CleanerPlugin::GetLicense()
 
 const char *CleanerPlugin::GetVersion()
 {
-	return "2.0";
+	return "2.1";
 }
 
 const char *CleanerPlugin::GetDate()

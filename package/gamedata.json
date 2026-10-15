@@ -1,0 +1,9 @@
+{
+  "LogDirect": {
+    "signatures": {
+      "library": "tier0",
+      "windows": "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ?",
+      "linux": "55 89 D0 49 89 FA"
+    }
+  }
+}

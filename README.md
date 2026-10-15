@@ -18,6 +18,25 @@ Supports both Windows and Linux.
 2. Extract the contents of the archive to your server's `addons` directory
 3. Edit the `addons/cleanercs2/config.cfg` file to your liking (see the example config above)
 
+## Gamedata
+
+The plugin hooks tier0's internal `LogDirect`, which is not exported, so it needs a
+signature. It reads `addons/cleanercs2/gamedata.json` and falls back to the signature
+compiled into the plugin when the file is missing or its signature no longer matches.
+After a game update, replacing `gamedata.json` is enough; no rebuild is needed.
+
+```json
+{
+  "LogDirect": {
+    "signatures": {
+      "library": "tier0",
+      "windows": "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ?",
+      "linux": "55 89 D0 49 89 FA"
+    }
+  }
+}
+```
+
 ## Commands
 
 - `conclear_reload` - Reloads the configuration file
