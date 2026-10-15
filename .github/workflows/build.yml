@@ -33,7 +33,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          # Push and same-repo PRs build on the VPS runner (msvc-wine in docker,
+          # warm re2/abseil cache). Fork PRs never reach a self-hosted runner on a
+          # public repo: they keep GitHub's windows-latest.
+          - os: ${{ (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) && 'msvc-wine' || 'windows-latest' }}
             name: Windows
           - os: ubuntu-latest
             name: SteamRT3
@@ -71,11 +74,28 @@ jobs:
           xmake-version: '3.1.0'
 
       - name: Build
+        if: matrix.os != 'msvc-wine'
         working-directory: CleanerCS2
         run: |
           xmake config --mode=release --yes
           xmake --yes
           xmake pack --yes CleanerCS2
+
+      # SDK paths are relative on purpose: link.exe under wine reads an absolute
+      # /path argument as a switch and drops the .lib (LNK4044). The toolchain file
+      # makes CMake target Windows when xmake builds re2/abseil. The container runs
+      # as root, so the workspace is handed back to the runner user either way.
+      - name: Build (msvc-wine)
+        if: matrix.os == 'msvc-wine'
+        run: |
+          printf 'set(CMAKE_SYSTEM_NAME Windows)\nset(CMAKE_SYSTEM_PROCESSOR AMD64)\n' > msvc-toolchain.cmake
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/w" -v xmake-cache:/root/.xmake -w /w/CleanerCS2 \
+            -e XMAKE_ROOT=y \
+            -e HL2SDKCS2=../hl2sdk-cs2 -e MMSOURCE_DEV=../mmsource-2.0 \
+            -e CMAKE_TOOLCHAIN_FILE=/w/msvc-toolchain.cmake \
+            -e PATH=/opt/msvc/bin/x64:/usr/local/bin:/usr/bin:/bin \
+            msvc-wine bash -c "rm -rf build .xmake; xmake f -p windows -a x64 -m release --sdk=/opt/msvc -y && xmake -y && xmake pack -y CleanerCS2; status=\$?; chown -R $(id -u):$(id -g) /w; exit \$status"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
