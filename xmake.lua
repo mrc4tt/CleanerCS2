@@ -14,7 +14,7 @@ target("CleanerCS2-Xmake")
     set_symbols("hidden")
 
     add_files({
-        SDK_PATH.."/tier1/convar.cpp",
+        SDK_PATH.."/tier0_perproject/convar.cpp",
         SDK_PATH.."/public/tier0/memoverride.cpp",
     })
 
@@ -46,9 +46,7 @@ target("CleanerCS2-Xmake")
         SDK_PATH.."/thirdparty/protobuf-3.21.8/src",
         SDK_PATH.."/common",
         SDK_PATH.."/game/shared",
-        SDK_PATH.."/game/server",
         SDK_PATH.."/public",
-        SDK_PATH.."/public/engine",
         SDK_PATH.."/public/mathlib",
         SDK_PATH.."/public/tier0",
         SDK_PATH.."/public/tier1",

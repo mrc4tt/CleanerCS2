@@ -8,3 +8,6 @@ build/
 /.vs/
 /vsxmake2022/
 .claude/
+
+# Local build dependencies (scripts/build-local.sh)
+.deps/

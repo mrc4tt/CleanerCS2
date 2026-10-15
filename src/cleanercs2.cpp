@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 #include "cleanercs2.h"
-#include <iserver.h>
+#include <engine2/ivengineserver2.h>
 #include "khook.hpp"
 #include "utils/module.h"
 #include <iostream>
@@ -53,13 +53,10 @@
 #endif
 
 CleanerPlugin g_CleanerPlugin;
-IServerGameDLL *server = NULL;
-IServerGameClients *gameclients = NULL;
-IVEngineServer *engine = NULL;
-IGameEventManager2 *gameevents = NULL;
+IVEngineServer2 *engine = NULL;
 ICvar *icvar = NULL;
 
-typedef int (*LogDirect_t)(void* loggingSystem, int channel, int severity, LeafCodeInfo_t*, char const*, va_list*);
+typedef int (*LogDirect_t)(void* loggingSystem, int channel, int severity, LoggingRareOptions_t*, char const*, va_list*);
 
 struct ChannelRule
 {
@@ -171,7 +168,7 @@ static void StartBlock(int channel, int severity)
 	g_BlockActive = true;
 }
 
-KHook::Return<int> Detour_LogDirect(void* loggingSystem, int channel, int severity, LeafCodeInfo_t* leafCode, char const* str, va_list* args)
+KHook::Return<int> Detour_LogDirect(void* loggingSystem, int channel, int severity, LoggingRareOptions_t* rareOptions, char const* str, va_list* args)
 {
 	if (g_BypassFilter)
 		return {KHook::Action::Ignore};
@@ -237,7 +234,7 @@ KHook::Return<int> Detour_LogDirect(void* loggingSystem, int channel, int severi
 	return {KHook::Action::Ignore};
 }
 
-KHook::Function<int, void*, int, int, LeafCodeInfo_t*, char const*, va_list*> logDirectHook(Detour_LogDirect, nullptr);
+KHook::Function<int, void*, int, int, LoggingRareOptions_t*, char const*, va_list*> logDirectHook(Detour_LogDirect, nullptr);
 
 #ifdef WIN32
 #define GAMEDATA_PLATFORM "windows"
@@ -607,11 +604,8 @@ bool CleanerPlugin::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen,
 {
 	PLUGIN_SAVEVARS();
 
-	GET_V_IFACE_CURRENT(GetEngineFactory, engine, IVEngineServer, INTERFACEVERSION_VENGINESERVER);
+	GET_V_IFACE_CURRENT(GetEngineFactory, engine, IVEngineServer2, INTERFACEVERSION_VENGINESERVER);
 	GET_V_IFACE_CURRENT(GetEngineFactory, icvar, ICvar, CVAR_INTERFACE_VERSION);
-	GET_V_IFACE_ANY(GetServerFactory, server, IServerGameDLL, INTERFACEVERSION_SERVERGAMEDLL);
-	GET_V_IFACE_ANY(GetServerFactory, gameclients, IServerGameClients, INTERFACEVERSION_SERVERGAMECLIENTS);
-	GET_V_IFACE_ANY(GetEngineFactory, g_pNetworkServerService, INetworkServerService, NETWORKSERVERSERVICE_INTERFACE_VERSION);
 
 	g_SMAPI->AddListener( this, this );
 
