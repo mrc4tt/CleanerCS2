@@ -292,18 +292,28 @@ bool GetGamedataSignature(const char* name, std::string& sig, std::string& libra
 bool SetupHook()
 {
 #ifdef WIN32
-	std::string sig = "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ? 55";
+	const char* builtinSig = "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ? 55";
 #else
-	std::string sig = "55 89 D0 49 89 FA 89 F7 48 89 E5";
+	const char* builtinSig = "55 89 D0 49 89 FA 89 F7 48 89 E5";
 #endif
+	std::string sig = builtinSig;
 	std::string library = "tier0";
 
-	if (GetGamedataSignature("LogDirect", sig, library))
+	bool fromGamedata = GetGamedataSignature("LogDirect", sig, library);
+	if (fromGamedata)
 		META_CONPRINTF("[CleanerCS2] Using LogDirect signature from gamedata.json\n");
 
 	CModule module(library == "server" ? GAMEBIN : ROOTBIN, library.c_str());
 
 	LogDirect_t pLogDirect = reinterpret_cast<LogDirect_t>(KHook::LookupSignature(module.m_base, module.m_size, sig.c_str()));
+
+	if (!pLogDirect && fromGamedata)
+	{
+		META_CONPRINTF("[CleanerCS2] LogDirect signature from gamedata.json not found in %s, trying the built-in one\n", library.c_str());
+
+		CModule tier0Module(ROOTBIN, "tier0");
+		pLogDirect = reinterpret_cast<LogDirect_t>(KHook::LookupSignature(tier0Module.m_base, tier0Module.m_size, builtinSig));
+	}
 
 	if (!pLogDirect)
 	{
@@ -676,7 +686,7 @@ const char *CleanerPlugin::GetLicense()
 
 const char *CleanerPlugin::GetVersion()
 {
-	return "2.1";
+	return "2.2";
 }
 
 const char *CleanerPlugin::GetDate()

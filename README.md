@@ -35,15 +35,15 @@ When at least one `@stderr` rule is present, stderr is redirected through a pipe
 
 ## Gamedata
 
-Signatures live in `addons/cleanercs2/gamedata.json`, so they can be updated after a CS2 update without rebuilding the plugin. If the file or an entry is missing, the built-in signature is used.
+Signatures live in `addons/cleanercs2/gamedata.json`, so they can be updated after a CS2 update without rebuilding the plugin. If the file or an entry is missing, or its signature no longer matches, the built-in signature is used.
 
 ```json
 {
   "LogDirect": {
     "signatures": {
       "library": "tier0",
-      "windows": "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ? 55",
-      "linux": "55 89 D0 49 89 FA 89 F7 48 89 E5"
+      "windows": "4C 89 4C 24 ? 44 89 44 24 ? 89 54 24 ?",
+      "linux": "55 89 D0 49 89 FA"
     }
   }
 }
