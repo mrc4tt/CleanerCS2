@@ -11,3 +11,4 @@ build/
 
 # Local build dependencies (scripts/build-local.sh)
 .deps/
+dist/
