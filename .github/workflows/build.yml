@@ -61,7 +61,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: alliedmodders/s2sdk
-          ref: cs2
+          # Pinned: s2sdk cs2 removed eiface.h, iserver.h and tier1/convar.cpp on
+          # 2026-10-10 while metamod-source master still includes eiface.h, so the
+          # branch head no longer builds any Metamod plugin. This is the cs2 head
+          # of the last green build (2026-10-08). Unpin once metamod catches up.
+          ref: 838f3d0163b8df0f1264d6a97aa88836e55b9dc5
           path: hl2sdk-cs2
 
       - name: Install xmake
