@@ -1,6 +1,6 @@
 set_runtimes("MT")
 add_rules("mode.debug", "mode.release")
-add_requires("re2")
+add_requires("re2", "nlohmann_json")
 
 includes("@builtin/xpack")
 
@@ -10,7 +10,7 @@ local MM_PATH = os.getenv("MMSOURCE_DEV")
 target("CleanerCS2-Xmake")
     set_kind("shared")
     add_files("src/*.cpp")
-    add_packages("re2")
+    add_packages("re2", "nlohmann_json")
     set_symbols("hidden")
 
     add_files({
@@ -99,5 +99,6 @@ xpack("CleanerCS2")
 
         os.vcp(targetfile, path.join(package:outputdir(), "addons", "cleanercs2", filename))
         os.vcp("package/config.cfg", path.join(package:outputdir(), "addons", "cleanercs2", "config.cfg"))
+        os.vcp("package/gamedata.json", path.join(package:outputdir(), "addons", "cleanercs2", "gamedata.json"))
         os.vcp("package/cleanercs2.vdf", path.join(package:outputdir(), "addons", "metamod", "cleanercs2.vdf"))
     end)
