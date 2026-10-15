@@ -18,6 +18,9 @@
  */
 
 #include <stdio.h>
+// Must come before Metamod headers: metamod_oslink.h defines snprintf as _snprintf on Windows,
+// which breaks nlohmann_json's use of std::snprintf
+#include <nlohmann/json.hpp>
 #include "cleanercs2.h"
 #include <engine2/ivengineserver2.h>
 #include "khook.hpp"
@@ -38,7 +41,6 @@
 #include <fcntl.h>
 #include <poll.h>
 #endif
-#include <nlohmann/json.hpp>
 
 // bruh
 #undef POSIX
