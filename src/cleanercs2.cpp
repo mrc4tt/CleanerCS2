@@ -31,6 +31,13 @@
 #include <algorithm>
 #include <atomic>
 #include <climits>
+#include <thread>
+
+#ifndef _WIN32
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#endif
 #include <nlohmann/json.hpp>
 
 // bruh
@@ -63,6 +70,7 @@ struct ChannelRule
 
 std::vector<re2::RE2*> g_RegexList;
 std::vector<re2::RE2*> g_BlockList;
+std::vector<re2::RE2*> g_StderrList;
 std::vector<ChannelRule> g_ChannelList;
 std::shared_mutex g_RegexMutex;
 thread_local bool g_BypassFilter = false;
@@ -309,6 +317,135 @@ bool SetupHook()
 	return true;
 }
 
+#ifndef _WIN32
+// The Steam API writes some messages ("dlopen failed trying to load", "[S_API FAIL]") straight to stderr,
+// bypassing tier0. To filter those, fd 2 is redirected into a pipe and a reader thread forwards every
+// line that does not match an @stderr rule to the original stderr.
+int g_OrigStderr = -1;
+int g_StderrStop[2] = {-1, -1};
+std::thread g_StderrThread;
+
+static bool StderrLineFiltered(const std::string& line)
+{
+	std::shared_lock<std::shared_mutex> lock(g_RegexMutex);
+	for (auto& regex : g_StderrList)
+	{
+		if (RE2::FullMatch(line, *regex))
+			return true;
+	}
+	return false;
+}
+
+static void StderrForward(const std::string& line)
+{
+	size_t written = 0;
+	while (written < line.size())
+	{
+		ssize_t n = write(g_OrigStderr, line.data() + written, line.size() - written);
+		if (n <= 0)
+			return;
+		written += n;
+	}
+}
+
+static void StderrReader(int readFd)
+{
+	std::string pending;
+	char chunk[4096];
+	bool stopping = false;
+
+	for (;;)
+	{
+		if (!stopping)
+		{
+			pollfd fds[2] = {{readFd, POLLIN, 0}, {g_StderrStop[0], POLLIN, 0}};
+			if (poll(fds, 2, -1) < 0)
+				continue;
+
+			// On unload, drain whatever is left without blocking, since a child process may still hold the write end
+			if (fds[1].revents)
+			{
+				stopping = true;
+				fcntl(readFd, F_SETFL, fcntl(readFd, F_GETFL) | O_NONBLOCK);
+			}
+		}
+
+		ssize_t n = read(readFd, chunk, sizeof chunk);
+		if (n <= 0)
+		{
+			if (n < 0 && !stopping)
+				continue;
+			break;
+		}
+
+		pending.append(chunk, n);
+
+		size_t newline;
+		while ((newline = pending.find('\n')) != std::string::npos)
+		{
+			std::string line = pending.substr(0, newline);
+			if (!StderrLineFiltered(line))
+				StderrForward(pending.substr(0, newline + 1));
+			pending.erase(0, newline + 1);
+		}
+
+		// Don't hold back very long unterminated output forever
+		if (pending.size() > sizeof chunk)
+		{
+			StderrForward(pending);
+			pending.clear();
+		}
+	}
+
+	if (!pending.empty() && !StderrLineFiltered(pending))
+		StderrForward(pending);
+
+	close(readFd);
+}
+
+static void InstallStderrFilter()
+{
+	if (g_OrigStderr != -1)
+		return;
+
+	int fds[2];
+	if (pipe(fds) != 0 || pipe(g_StderrStop) != 0)
+	{
+		META_CONPRINTF("[CleanerCS2] Failed to create stderr pipe\n");
+		return;
+	}
+
+	// Keep the pipe out of child processes
+	fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+	fcntl(g_StderrStop[0], F_SETFD, FD_CLOEXEC);
+	fcntl(g_StderrStop[1], F_SETFD, FD_CLOEXEC);
+
+	fflush(stderr);
+	g_OrigStderr = fcntl(STDERR_FILENO, F_DUPFD_CLOEXEC, 0);
+	dup2(fds[1], STDERR_FILENO);
+	close(fds[1]);
+
+	g_StderrThread = std::thread(StderrReader, fds[0]);
+}
+
+static void RemoveStderrFilter()
+{
+	if (g_OrigStderr == -1)
+		return;
+
+	fflush(stderr);
+	dup2(g_OrigStderr, STDERR_FILENO);
+
+	write(g_StderrStop[1], "x", 1);
+	g_StderrThread.join();
+
+	close(g_StderrStop[0]);
+	close(g_StderrStop[1]);
+	close(g_OrigStderr);
+	g_OrigStderr = -1;
+}
+#endif
+
 static void DeleteRegexes(std::vector<re2::RE2*>& list)
 {
 	for (auto& regex : list)
@@ -366,6 +503,7 @@ void LoadConfig()
 {
 	std::vector<re2::RE2*> regexes;
 	std::vector<re2::RE2*> blocks;
+	std::vector<re2::RE2*> stderrs;
 	std::vector<ChannelRule> channels;
 
 	std::filesystem::path cfgPath = GetAddonPath("config.cfg");
@@ -396,6 +534,11 @@ void LoadConfig()
 				else
 					META_CONPRINTF("[CleanerCS2] Invalid channel rule: '%s'\n", line.c_str());
 			}
+			else if (line.starts_with("@stderr:"))
+			{
+				if (re2::RE2* re = CompileRegex(line.substr(sizeof("@stderr:") - 1)))
+					stderrs.push_back(re);
+			}
 			else if (line.starts_with("@block:"))
 			{
 				if (re2::RE2* re = CompileRegex(line.substr(sizeof("@block:") - 1)))
@@ -417,16 +560,27 @@ void LoadConfig()
 		std::unique_lock<std::shared_mutex> lock(g_RegexMutex);
 		g_RegexList.swap(regexes);
 		g_BlockList.swap(blocks);
+		g_StderrList.swap(stderrs);
 		g_ChannelList.swap(channels);
 	}
 
 	DeleteRegexes(regexes);
 	DeleteRegexes(blocks);
+	DeleteRegexes(stderrs);
+
+#ifndef _WIN32
+	// Only touch fd 2 when there is something to filter
+	if (!g_StderrList.empty())
+		InstallStderrFilter();
+#else
+	if (!g_StderrList.empty())
+		META_CONPRINTF("[CleanerCS2] @stderr rules are only supported on Linux\n");
+#endif
 
 	ResolveChannels();
 
 	g_BypassFilter = true;
-	META_CONPRINTF("[CleanerCS2] Loaded %d regexes, %d blocks, %d channel rules\n", (int)g_RegexList.size(), (int)g_BlockList.size(), (int)g_ChannelList.size());
+	META_CONPRINTF("[CleanerCS2] Loaded %d regexes, %d blocks, %d channel rules, %d stderr rules\n", (int)g_RegexList.size(), (int)g_BlockList.size(), (int)g_ChannelList.size(), (int)g_StderrList.size());
 	for (auto& rule : g_ChannelList)
 	{
 		if (rule.id == -1)
@@ -477,10 +631,15 @@ bool CleanerPlugin::Load(PluginId id, ISmmAPI *ismm, char *error, size_t maxlen,
 
 bool CleanerPlugin::Unload(char *error, size_t maxlen)
 {
+#ifndef _WIN32
+	RemoveStderrFilter();
+#endif
+
 	std::unique_lock<std::shared_mutex> lock(g_RegexMutex);
 
 	DeleteRegexes(g_RegexList);
 	DeleteRegexes(g_BlockList);
+	DeleteRegexes(g_StderrList);
 	g_ChannelList.clear();
 
 	return true;

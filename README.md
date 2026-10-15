@@ -27,10 +27,11 @@ Besides regular expressions, the config understands a few special lines:
 | `@channel:Name` | Drops every message on the logging channel `Name` (e.g. `SteamNetSockets`, `Server`, `EngineServiceManager`). `General` is the channel used by `Msg`/`Warning`. |
 | `@channel[2]:Name` | Drops only messages with severity <= 2 (1 = detailed, 2 = message, 3 = warning, 4 = assert, 5 = error). |
 | `@block:regex` | Drops the message matching `regex` and the `{ ... }` dump that follows it on the same channel, e.g. the KeyValues dump after `CSource2Server::ApplyGameSettings`. |
+| `@stderr:regex` | Linux only. Drops lines written directly to stderr that bypass the logging system, e.g. the Steam API's `dlopen failed trying to load` and `[S_API FAIL]`. Matched per line, without the trailing newline. |
 
 Run `conclear_debug 1` to prefix every message with `[cc2:channel|severity]`, which shows what to filter. Channels that are not registered yet when the config loads are resolved on the next map load.
 
-Messages that the Steam API writes directly to stderr (`dlopen failed trying to load`, `[S_API FAIL]`) do not go through the logging system and cannot be filtered.
+When at least one `@stderr` rule is present, stderr is redirected through a pipe and filtered line by line; without such rules stderr is left untouched.
 
 ## Gamedata
 
