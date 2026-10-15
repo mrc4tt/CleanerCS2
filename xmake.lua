@@ -1,6 +1,6 @@
 set_runtimes("MT")
 add_rules("mode.debug", "mode.release")
-add_requires("re2")
+add_requires("re2", "nlohmann_json")
 
 includes("@builtin/xpack")
 
@@ -10,11 +10,11 @@ local MM_PATH = os.getenv("MMSOURCE_DEV")
 target("CleanerCS2-Xmake")
     set_kind("shared")
     add_files("src/*.cpp")
-    add_packages("re2")
+    add_packages("re2", "nlohmann_json")
     set_symbols("hidden")
 
     add_files({
-        SDK_PATH.."/tier1/convar.cpp",
+        SDK_PATH.."/tier0_perproject/convar.cpp",
         SDK_PATH.."/public/tier0/memoverride.cpp",
     })
 
@@ -46,9 +46,7 @@ target("CleanerCS2-Xmake")
         SDK_PATH.."/thirdparty/protobuf-3.21.8/src",
         SDK_PATH.."/common",
         SDK_PATH.."/game/shared",
-        SDK_PATH.."/game/server",
         SDK_PATH.."/public",
-        SDK_PATH.."/public/engine",
         SDK_PATH.."/public/mathlib",
         SDK_PATH.."/public/tier0",
         SDK_PATH.."/public/tier1",

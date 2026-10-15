@@ -21,7 +21,6 @@
 #define _INCLUDE_METAMOD_SOURCE_STUB_PLUGIN_H_
 
 #include <ISmmPlugin.h>
-#include <igameevents.h>
 
 class CleanerPlugin : public ISmmPlugin, public IMetamodListener
 {
