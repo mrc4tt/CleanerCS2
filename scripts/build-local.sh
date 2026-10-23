@@ -12,7 +12,12 @@ IMAGE="ghcr.io/source2ze/build-containers:$RUNTIME"
 clone_or_update() {
 	local repo="$1" ref="$2" dir="$3"
 	if [ ! -d "$dir" ]; then
-		git clone --depth 1 --recurse-submodules --shallow-submodules -b "$ref" "$repo" "$dir"
+		# init + fetch instead of clone -b so ref can be a commit SHA as well as a branch
+		git init -q "$dir"
+		git -C "$dir" remote add origin "$repo"
+		git -C "$dir" fetch --depth 1 origin "$ref"
+		git -C "$dir" checkout -q FETCH_HEAD
+		git -C "$dir" submodule update --init --recursive --depth 1
 	elif [ "${UPDATE:-0}" = "1" ]; then
 		git -C "$dir" fetch --depth 1 origin "$ref"
 		git -C "$dir" reset --hard FETCH_HEAD
@@ -21,8 +26,8 @@ clone_or_update() {
 }
 
 mkdir -p "$DEPS"
-clone_or_update https://github.com/alliedmodders/s2sdk.git cs2 "$DEPS/hl2sdk-cs2"
-clone_or_update https://github.com/alliedmodders/metamod-source.git master "$DEPS/mmsource-2.0"
+clone_or_update https://github.com/mrc4tt/hl2sdk.git cs2 "$DEPS/hl2sdk-cs2"
+clone_or_update https://github.com/mrc4tt/metamod-source.git master "$DEPS/mmsource-2.0"
 
 docker run --rm \
 	-v "$ROOT:/src" \
