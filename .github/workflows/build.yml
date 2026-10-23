@@ -1,8 +1,8 @@
 name: CI
 
 # Releases are built and published locally (cs2-build-system/build-all.sh --release);
-# this workflow only runs on demand or for pull requests.
-on: [workflow_dispatch, pull_request]
+# this workflow only runs when started by hand (Actions -> Run workflow).
+on: workflow_dispatch
 
 jobs:
   version:
@@ -35,10 +35,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Manual runs and same-repo PRs build on the VPS runner (msvc-wine in docker,
-          # warm re2/abseil cache). Fork PRs never reach a self-hosted runner on a
-          # public repo: they keep GitHub's windows-latest.
-          - os: ${{ (github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) && 'msvc-wine' || 'windows-latest' }}
+          # Builds on the VPS runner (msvc-wine in docker, warm re2/abseil cache).
+          # Only manual runs exist, so no fork PR can reach this self-hosted runner.
+          - os: msvc-wine
             name: Windows
           - os: ubuntu-latest
             name: SteamRT3
