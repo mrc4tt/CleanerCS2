@@ -54,6 +54,18 @@ Signatures live in `addons/cleanercs2/gamedata.json`, so they can be updated aft
 - `conclear_reload` - Reloads the configuration file
 - `conclear_debug <0|1>` - Tags every console message with its channel and severity
 
+## Support
+
+Need help, found a bug, or have a feature idea? Join the Discord support server:
+
+[![Discord](https://img.shields.io/badge/Discord-Join%20the%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/zuQN3U2ZEh)
+
+- **Questions and setup help:** ask in the support channels on Discord.
+- **Bug reports:** open a [GitHub issue](https://github.com/mrc4tt/CleanerCS2/issues) with your server log, plugin version and steps to reproduce. Discord is fine for a quick check first.
+- **Feature requests:** post them on Discord or open an [issue](https://github.com/mrc4tt/CleanerCS2/issues).
+
+Please do not send support requests by direct message. Asking in the public channels means others can help and find the answer later.
+
 ## Building from source
 
 [Xmake](https://xmake.io/#/getting_started) is used to build the project.
