@@ -14,9 +14,21 @@ Supports both Windows and Linux.
 
 ## Installation
 
-1. Download the latest release from the [releases page](https://github.com/Source2ZE/CleanerCS2/releases/)
-2. Extract the contents of the archive to your server's `addons` directory
+1. Download the package for your server from the [latest release](https://github.com/mrc4tt/CleanerCS2/releases/latest) (see [Which download?](#which-download) below)
+2. Extract the archive into your server's `game/csgo` directory (it contains `addons/`)
 3. Edit the `addons/cleanercs2/config.cfg` file to your liking (see the example config above)
+
+### Which download?
+
+Every [release](https://github.com/mrc4tt/CleanerCS2/releases/latest) has three packages:
+
+| Package | For |
+| --- | --- |
+| `CleanerCS2-<version>-steamrt3.tar.gz` | Linux servers. The CS2 dedicated server runs in Steam Runtime 3 ("sniper"); this build loads there, in Steam Runtime 4 and on any newer distribution. **Take this one if unsure.** |
+| `CleanerCS2-<version>-steamrt4.tar.gz` | Linux servers that run in Steam Runtime 4. |
+| `CleanerCS2-<version>-windows.zip` | Windows servers. |
+
+The top of each release lists the exact glibc and libstdc++ every Linux build needs and the distributions it loads on. A build that is too new for the server fails at load time with `version 'GLIBC_2.xx' not found` in the console.
 
 ## Channel and block rules
 
