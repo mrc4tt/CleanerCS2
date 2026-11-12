@@ -648,6 +648,11 @@ bool CleanerPlugin::Unload(char *error, size_t maxlen)
 	DeleteRegexes(g_StderrList);
 	g_ChannelList.clear();
 
+	// Unregister conclear_reload/conclear_debug while the cvar system is still alive. Left registered, their
+	// static destructors unregister them at process exit, after tier0 shut the cvar system down, and the
+	// server segfaults on every quit.
+	ConVar_Unregister();
+
 	return true;
 }
 
